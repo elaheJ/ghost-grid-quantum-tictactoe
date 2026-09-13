@@ -1,0 +1,341 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; connect-src 'none'; img-src data:; base-uri 'none'; form-action 'none'">
+<title>Ghost Grid — Superposition Only</title>
+<style>
+:root { color-scheme: light; font-family: Arial, Helvetica, sans-serif; color: #202435; background: #fff; }
+* { box-sizing: border-box; }
+body { margin: 0; }
+.app { max-width: 1440px; min-width: 650px; margin: auto; padding: 18px 28px; }
+header { display: flex; justify-content: space-between; align-items: center; gap: 20px; }
+h1 { margin: 0; color: #b41524; font-size: clamp(26px, 3vw, 40px); }
+.subtitle { margin: 5px 0 0; font-size: 18px; }
+.badge { border: 1px solid #bec8be; border-radius: 20px; padding: 8px 14px; font-size: 15px; white-space: nowrap; }
+.turn-badge { font-weight: bold; font-size: clamp(18px, 1.9vw, 24px); border-width: 3px; border-style: solid; padding: 10px 18px; }
+.turn-badge.x { color: #b41524; border-color: #b41524; background: #fdeff0; }
+.turn-badge.o { color: #154c9c; border-color: #154c9c; background: #eef3fb; }
+.turn-badge.done { color: #202435; border-color: #bec8be; background: #f0f3f8; }
+#status { font-size: clamp(21px, 2.3vw, 30px); font-weight: bold; margin: 18px 0; padding: 14px 18px; background: #f0f3f8; border-left: 6px solid #b41524; border-radius: 6px; }
+.play-area { display: grid; grid-template-columns: minmax(0, 1fr) minmax(260px, .68fr); gap: clamp(24px, 5vw, 72px); align-items: center; }
+.board-wrap { width: min(100%, 62vh, 670px); justify-self: center; }
+#board { display: grid; grid-template-columns: repeat(3, 1fr); grid-template-rows: repeat(3, 1fr); aspect-ratio: 1; gap: 5px; background: #ba1828; border: 5px solid #ba1828; border-radius: 8px; overflow: hidden; }
+.square { position: relative; display: flex; align-items: center; justify-content: center; background: white; min-width: 0; min-height: 0; padding: 30px 5px 8px; }
+.square.selected { background: #fff0c9; box-shadow: inset 0 0 0 4px #8c6000; }
+.square.winning { background: #e0f3e3; }
+.square.full { background: #f7f4ee; }
+.number { position: absolute; top: 6px; left: 9px; font-size: clamp(16px, 1.8vw, 24px); font-weight: bold; color: #626575; }
+.mark { font-size: clamp(52px, 9vh, 110px); font-weight: bold; }
+.x { color: #b41524; }
+.o { color: #154c9c; }
+.ghosts { display: flex; gap: 5px; align-items: center; justify-content: center; width: 100%; }
+.ghost { border: 3px dashed currentColor; border-radius: 10px; padding: 5px 10px; text-align: center; font-weight: bold; line-height: 1; }
+.ghosts.one .ghost { font-size: clamp(34px, 6vh, 65px); padding: 5px 12px; }
+.ghosts.two .ghost { font-size: clamp(19px, 3.3vh, 34px); padding: 4px 6px; }
+.ghost small { display: block; margin-top: 5px; font-size: .44em; font-weight: bold; }
+.ghost.selected { background: #fff0c9; box-shadow: 0 0 0 3px #8c6000; }
+.earth { position: absolute; top: 9px; right: 8px; font-size: 14px; font-weight: bold; color: #6b4700; }
+.legend { display: flex; justify-content: center; gap: 22px; margin-top: 12px; font-size: 17px; }
+.legend span:first-child { border-bottom: 2px dashed #626575; }
+h2 { font-size: 26px; margin: 0 0 8px; }
+#move { font-size: 20px; margin: 0 0 14px; font-weight: bold; }
+#pad { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+button { font: inherit; cursor: pointer; border: 2px solid #b9bdc8; border-radius: 9px; background: #f4f5f8; color: #202435; font-weight: bold; }
+button:hover:enabled { background: #e6eaf3; border-color: #50586c; }
+button:focus-visible { outline: 4px solid #985800; outline-offset: 3px; }
+.pad-button { height: clamp(52px, 8vh, 82px); font-size: clamp(26px, 2.6vw, 34px); line-height: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 2px; }
+.pad-button.selected { background: #fff0c9; border-color: #8c6000; }
+button:disabled { cursor: default; opacity: .42; }
+.actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 16px; }
+.actions button { padding: 11px 15px; font-size: 17px; }
+#new-game { background: #b41524; border-color: #b41524; color: white; }
+#new-game:hover { background: #95111e; }
+.hint { color: #535969; font-size: 16px; line-height: 1.45; margin: 12px 0 0; }
+#event { min-height: 24px; font-size: 18px; line-height: 1.4; margin: 18px 0 0; }
+body[data-phase="measure"] .pad-button { height: clamp(44px, 7vh, 76px); font-size: 25px; }
+body[data-phase="measure"] #hint, body[data-phase="measure"] #event { display: none; }
+#mode-controls { display: flex; gap: 8px; margin-bottom: 12px; }
+#mode-controls button { flex: 1; padding: 9px 4px; font-size: 17px; }
+#mode-controls button[aria-pressed="true"] { background: #154c9c; border-color: #154c9c; color: white; }
+#measurement { margin: 12px 0; padding: 12px; border: 2px solid #154c9c; border-radius: 8px; }
+#pair-choice { margin: 0 0 8px; font-size: 19px; font-weight: bold; }
+#roll { width: 100%; padding: 10px; background: #154c9c; border-color: #154c9c; color: white; font-size: 21px; }
+#die-rule { margin: 8px 0 0; font-size: 16px; }
+#die-result { margin: 12px 0 0; font-size: 19px; font-weight: bold; line-height: 1.4; background: #f0f3f8; padding: 8px 12px; border-radius: 6px; }
+#die-result .forced { display: block; margin-top: 6px; font-size: 17px; color: #6b4700; }
+.pad-button small { display: block; font-size: 12px; margin-top: 2px; font-weight: bold; }
+[hidden] { display: none !important; }
+details { margin-top: 18px; border-top: 1px solid #d5d8de; padding-top: 12px; font-size: 17px; line-height: 1.5; }
+summary { cursor: pointer; font-weight: bold; }
+details p { max-width: 1000px; }
+@media (max-height: 720px) { .app { padding-top: 12px; } #status { margin: 12px 0; padding: 10px 14px; } #event { margin-top: 10px; } details { margin-top: 10px; } }
+</style>
+</head>
+<body>
+<main class="app">
+  <header><div><h1>GHOST GRID</h1><p class="subtitle">Superposition only · Spooky marks may share a square · Two marks per square</p></div><span class="badge turn-badge" id="turn-badge"></span></header>
+  <div id="status" role="status" aria-live="polite"></div>
+  <div class="play-area">
+    <section class="board-wrap" aria-label="Game board">
+      <div id="board" role="group" aria-label="Squares 1 to 9, left to right, top to bottom"></div>
+      <div class="legend"><span>Dashed = spooky mark</span><span>Large = real mark</span></div>
+    </section>
+    <section aria-label="Playing pad">
+      <h2>Playing pad</h2><p id="move"></p>
+      <div id="mode-controls" role="group" aria-label="Choose move type"><button id="classical" aria-pressed="false">Classical · 1 square</button><button id="quantum" aria-pressed="true">Superposition · 2 squares</button></div>
+      <div id="pad"></div>
+      <section id="measurement" hidden aria-label="Measure a superposition pair">
+        <p id="pair-choice"></p><button id="roll" disabled>Roll die</button>
+        <p id="die-rule">Odd (1, 3, 5) → A · Even (2, 4, 6) → B</p>
+      </section>
+      <p id="die-result" hidden aria-live="polite"></p>
+      <div class="actions"><button id="undo">Undo</button><button id="new-game">New game</button><button id="fullscreen">Full screen</button></div>
+      <p class="hint" id="hint"></p>
+      <p id="event" aria-live="polite"></p>
+    </section>
+  </div>
+  <details><summary>How to play</summary>
+    <p>This version follows Allan Goff's superposition rule: <strong>spooky marks may share a square</strong>. A square holds at most <strong>two</strong> marks. Placement continues until every square holds at least one mark, and then the pairs are measured.</p>
+    <p><strong>Place:</strong> X and O take turns. Choose a <strong>Classical</strong> move, which puts one real mark in a completely empty square, or a <strong>Superposition</strong> move, which puts a matching pair of spooky marks in two different squares. Each pair has its own color and move number; the first square is <strong>A</strong> and the second is <strong>B</strong>. A spooky mark may go into a square that already holds one other spooky mark. A real mark locks its square, so nothing further may be placed there.</p>
+    <p><strong>Entanglement:</strong> two pairs that share a square are entangled, exactly as in Goff's article. They cannot both end up in that square, so collapsing one forces the other into its far square, and that forcing can cascade through a chain of shared squares. The game applies these forced collapses for you and lists them after the roll.</p>
+    <p><strong>Measure when every square is filled:</strong> once no square is empty, take turns measuring the remaining pairs. Each player may select and measure <strong>only their own pairs</strong>: X measures X, and O measures O. If the next player has no pairs remaining, measurement passes to the other player. Select your half on the playing pad, then click <strong>Roll die</strong>. An odd roll keeps A and an even roll keeps B. The surviving half becomes a real mark for the pair's owner, any entangled partners are forced at the same time, and the emptied squares become available again.</p>
+    <p><strong>Continue or finish:</strong> after every pair is measured, three real X's or O's in a row wins. Spooky marks never count toward a win. If nobody has won and empty squares remain, the next player continues placing until every square is filled again. Repeat until a win or a draw. A full board of real marks with no winning line is a draw.</p>
+    <p><strong>Conventions for details Goff leaves open here:</strong> odd → A and even → B; placement and measurement share one alternating turn order; if both players hold a winning line once all pairs are measured, the game is a draw. Dice rolls are generated locally and require no internet.</p>
+    <p><strong>Controls:</strong> click the pad or press 1–9. During measurement a shared square selects only the current player's marks; repeated clicks cycle between that player's pairs if there are two. Squares holding only the other player's marks are disabled. Escape cancels a pending selection. Undo cancels a selection or reverses the last placement or measurement. New game starts over. For projection, open this file directly in a browser and click Full screen.</p>
+    <p>Superposition, shared squares, entanglement, and collapse follow Allan Goff, <em>Quantum tic-tac-toe: A teaching metaphor for superposition in quantum mechanics</em>, American Journal of Physics 74 (2006), pp. 962–973.</p>
+  </details>
+</main>
+<script>
+'use strict';
+const LINES = [[1,2,3],[4,5,6],[7,8,9],[1,4,7],[2,5,8],[3,6,9],[1,5,9],[3,5,7]];
+const PALETTE = ['#975000','#086d75','#673bb7','#aa2858','#316226','#185aa5','#6d5600','#8e3d16'];
+const CAPACITY = 2;
+const SQUARES = Array.from({length:9},(_,i)=>i+1);
+class GhostGame {
+  constructor() { this.reset(); }
+  reset() {
+    this.solid = Array(10).fill(null); this.pairs = [];
+    this.turn = 'X'; this.move = 1; this.round = 1; this.mode = 'quantum';
+    this.first = null; this.selectedPair = null; this.phase = 'play';
+    this.result = null; this.lastRoll = null; this.event = ''; this.undoStack = [];
+  }
+  halvesAt(square) { return this.pairs.filter(p => p.squares.includes(square)); }
+  measurablePairsAt(square) { return this.halvesAt(square).filter(p => p.player === this.turn); }
+  tokensAt(square) { return (this.solid[square] ? 1 : 0) + this.halvesAt(square).length; }
+  isEmpty(square) { return this.tokensAt(square) === 0; }
+  hasRoom(square) { return !this.solid[square] && this.halvesAt(square).length < CAPACITY; }
+  emptySquares() { return SQUARES.filter(s => this.isEmpty(s)); }
+  roomSquares() { return SQUARES.filter(s => this.hasRoom(s)); }
+  boardFull() { return this.emptySquares().length === 0; }
+  snapshot() {
+    const {undoStack,...state} = this;
+    return JSON.stringify({...state,first:null,selectedPair:null});
+  }
+  cancel() { this.first = null; this.selectedPair = null; }
+  undo() {
+    if (this.first !== null || this.selectedPair !== null) { this.cancel(); return; }
+    if (this.undoStack.length) Object.assign(this,JSON.parse(this.undoStack.pop()));
+  }
+  setMode(mode) {
+    if (this.phase !== 'play' || !['classical','quantum'].includes(mode)) return;
+    if (mode === 'quantum' && this.roomSquares().length < 2) return;
+    if (mode === 'classical' && !this.emptySquares().length) return;
+    this.mode = mode; this.first = null;
+  }
+  nextPlayer() { this.turn = this.turn === 'X' ? 'O' : 'X'; }
+  ensureMeasuringPlayer() {
+    if (this.phase !== 'measure' || !this.pairs.length || this.pairs.some(p => p.player === this.turn)) return;
+    const skipped = this.turn;
+    this.selectedPair = null;
+    this.nextPlayer();
+    this.event += ` ${skipped} has no pairs left; ${this.turn} measures next.`;
+  }
+  winningLines(player) { return LINES.filter(line=>line.every(s=>this.solid[s]?.player === player)); }
+  checkResult() {
+    const x = this.winningLines('X').length > 0, o = this.winningLines('O').length > 0;
+    if (x && o) return 'BOTH';
+    if (x || o) return x ? 'X' : 'O';
+    return !this.pairs.length && !this.emptySquares().length ? 'DRAW' : null;
+  }
+  finishIfWon() {
+    this.result = this.checkResult();
+    if (this.result) this.phase = 'over';
+    return Boolean(this.result);
+  }
+  // Entangled collapse: fixing one pair displaces any pair sharing that square,
+  // forcing it to its far square, which can cascade along a chain of shared squares.
+  collapse(rootPair, rootSquare) {
+    const assignment = new Map([[rootPair.id,rootSquare]]);
+    const occupied = new Set([rootSquare]);
+    const queue = [rootSquare];
+    while (queue.length) {
+      const square = queue.shift();
+      for (const other of this.halvesAt(square)) {
+        if (assignment.has(other.id)) continue;
+        const away = other.squares[0] === square ? other.squares[1] : other.squares[0];
+        if (this.solid[away] || occupied.has(away)) return null;
+        assignment.set(other.id,away); occupied.add(away); queue.push(away);
+      }
+    }
+    return assignment;
+  }
+  choose(square) {
+    if (!Number.isInteger(square) || square < 1 || square > 9 || this.phase === 'over') return;
+    if (this.phase === 'measure') {
+      const halves = this.measurablePairsAt(square);
+      if (!halves.length) return;
+      const index = halves.findIndex(p => p.id === this.selectedPair);
+      this.selectedPair = halves[(index + 1) % halves.length].id;
+      return;
+    }
+    if (this.mode === 'classical') {
+      if (!this.isEmpty(square)) return;
+    } else {
+      if (this.roomSquares().length < 2 || !this.hasRoom(square)) return;
+      if (this.first === null) { this.first = square; return; }
+      if (square === this.first) return;
+    }
+    this.undoStack.push(this.snapshot());
+    if (this.mode === 'classical') {
+      this.solid[square] = {player:this.turn,id:this.move};
+      this.event = `${this.turn} placed a real mark in square ${square}.`;
+    } else {
+      this.pairs.push({player:this.turn,id:this.move,squares:[this.first,square]});
+      this.event = `${this.turn}${this.move}: A in ${this.first}, B in ${square}.`;
+    }
+    this.first = null; this.lastRoll = null; this.move++; this.nextPlayer();
+    if (!this.pairs.length && this.finishIfWon()) return;
+    if (this.boardFull()) {
+      this.phase = 'measure';
+      this.event = 'Every square is filled. Measure every pair before placing again.';
+      this.ensureMeasuringPlayer();
+    } else if (this.roomSquares().length < 2) this.mode = 'classical';
+  }
+  measure(face) {
+    if (this.phase !== 'measure' || !Number.isInteger(face) || face < 1 || face > 6) return;
+    const pair = this.pairs.find(p=>p.id === this.selectedPair && p.player === this.turn);
+    if (!pair) return;
+    const endpoint = face % 2 === 1 ? 0 : 1;
+    const target = pair.squares[endpoint];
+    const assignment = this.collapse(pair,target);
+    if (!assignment) return;
+    this.undoStack.push(this.snapshot());
+    const forced = [];
+    for (const [id,square] of assignment) {
+      const collapsing = this.pairs.find(p=>p.id === id);
+      this.solid[square] = {player:collapsing.player,id:collapsing.id};
+      if (id !== pair.id) forced.push(`${collapsing.player}${collapsing.id} forced into ${square}`);
+    }
+    this.pairs = this.pairs.filter(p=>!assignment.has(p.id));
+    this.lastRoll = {face,player:pair.player,id:pair.id,label:endpoint === 0 ? 'A' : 'B',
+      square:target,cleared:pair.squares[1-endpoint],measurer:this.turn,forced};
+    this.selectedPair = null; this.nextPlayer();
+    if (this.pairs.length) {
+      this.event = `${this.pairs.length} ${this.pairs.length === 1 ? 'pair remains' : 'pairs remain'} to measure.`;
+      this.ensureMeasuringPlayer();
+      return;
+    }
+    this.event = 'All pairs measured.';
+    if (!this.finishIfWon()) {
+      this.phase = 'play'; this.round++;
+      this.mode = this.roomSquares().length >= 2 ? 'quantum' : 'classical';
+      this.event = 'No winner yet. Fill every square again, then measure.';
+    }
+  }
+}
+const game = new GhostGame();
+const board = document.getElementById('board'), pad = document.getElementById('pad');
+for (let s=1;s<=9;s++) {
+  const cell=document.createElement('div');cell.className='square';board.appendChild(cell);
+  const button=document.createElement('button');button.className='pad-button';
+  button.addEventListener('click',()=>{game.choose(s);render();});pad.appendChild(button);
+}
+const tint = pair => PALETTE[(pair.id-1)%PALETTE.length];
+const halfLabel = (pair,square) => pair.squares[0] === square ? 'A' : 'B';
+function describe(square) {
+  const solid=game.solid[square], halves=game.halvesAt(square);
+  if (solid) return `real ${solid.player} from move ${solid.id}`;
+  if (!halves.length) return 'empty';
+  return halves.map(p=>`${p.player} pair ${p.id} half ${halfLabel(p,square)}`).join(' and ');
+}
+function render() {
+  document.body.dataset.phase = game.phase;
+  const winning=game.phase === 'over' ? [...game.winningLines('X'),...game.winningLines('O')].flat() : [];
+  for (let s=1;s<=9;s++) {
+    const cell=board.children[s-1],button=pad.children[s-1];
+    const solid=game.solid[s],halves=game.halvesAt(s);
+    const chosen=halves.some(p=>p.id===game.selectedPair);
+    const selected=game.first===s || chosen;
+    cell.className='square'+(selected?' selected':'')+(winning.includes(s)?' winning':'')
+      +(!solid && halves.length===CAPACITY?' full':'');
+    let inner=`<span class="number">${s}</span>`;
+    if (solid) inner+=`<span class="mark ${solid.player.toLowerCase()}">${solid.player}</span>`;
+    else if (halves.length) inner+=`<span class="ghosts ${halves.length===1?'one':'two'}">`+halves.map(p=>
+      `<span class="ghost${p.id===game.selectedPair?' selected':''}" style="color:${tint(p)}">${p.player}<small>${p.id} · ${halfLabel(p,s)}</small></span>`).join('')+'</span>';
+    if (game.first===s) inner+='<span class="earth">A selected</span>';
+    cell.innerHTML=inner;
+    cell.setAttribute('aria-label',`Square ${s}, ${describe(s)}`);
+    button.innerHTML=String(s)+(halves.length?`<small>${halves.map(p=>`${p.player}${p.id}${halfLabel(p,s)}`).join(' ')}</small>`:solid?`<small>${solid.player}</small>`:'');
+    button.disabled=game.phase==='over'||(game.phase==='measure'
+      ? !game.measurablePairsAt(s).length
+      : game.mode==='classical' ? !game.isEmpty(s) : (!game.hasRoom(s)||game.first===s));
+    button.classList.toggle('selected',selected);button.setAttribute('aria-pressed',String(selected));
+    button.setAttribute('aria-label',`Square ${s}, ${describe(s)}`);
+  }
+  const pair=game.pairs.find(p=>p.id===game.selectedPair && p.player===game.turn);
+  const badge=document.getElementById('turn-badge');
+  if (game.phase==='over') { badge.className='badge turn-badge done'; badge.textContent='Game over'; }
+  else { badge.className='badge turn-badge '+game.turn.toLowerCase();
+    badge.textContent=`Turn: ${game.turn} · ${game.phase==='measure'?'measuring':'placing'}`; }
+  let status;
+  if (game.result==='BOTH') status='Draw — both players have three real marks in a row.';
+  else if (game.result==='DRAW') status='Draw — every square holds a real mark.';
+  else if (game.result) status=`Player ${game.result} wins — three real marks in a row!`;
+  else if (game.phase==='measure') status=pair?`Player ${game.turn}: roll to measure your pair ${pair.id}.`:`Player ${game.turn}: choose one of your own pairs to measure.`;
+  else if (game.first!==null) status=`Player ${game.turn}: A is ${game.first}. Choose another square for B.`;
+  else status=`Player ${game.turn}: ${game.mode==='classical'?'place one real mark in an empty square.':'choose a square for A.'}`;
+  document.getElementById('status').textContent=status;
+  document.getElementById('move').textContent=game.phase==='over'?'Game finished'
+    :game.phase==='measure'?`Turn: ${game.turn} · Measurement · ${game.pairs.length} ${game.pairs.length===1?'pair':'pairs'} left`
+    :`Turn: ${game.turn} · Placement round ${game.round} · Move ${game.move}`;
+  document.getElementById('mode-controls').hidden=game.phase!=='play';
+  document.getElementById('classical').setAttribute('aria-pressed',String(game.mode==='classical'));
+  document.getElementById('quantum').setAttribute('aria-pressed',String(game.mode==='quantum'));
+  document.getElementById('classical').disabled=!game.emptySquares().length;
+  document.getElementById('quantum').disabled=game.roomSquares().length<2;
+  document.getElementById('measurement').hidden=game.phase!=='measure';
+  document.getElementById('pair-choice').textContent=pair?`Selected: ${pair.player}${pair.id} · A: ${pair.squares[0]} · B: ${pair.squares[1]}`:`Choose an ${game.turn} pair using either of its squares.`;
+  document.getElementById('roll').disabled=!pair;
+  const roll=document.getElementById('die-result');roll.hidden=!game.lastRoll;
+  if (game.lastRoll) { const r=game.lastRoll;
+    roll.innerHTML=`Die: ${r.face} → ${r.player}${r.id}${r.label} stays in ${r.square}; square ${r.cleared} clears.`
+      +(r.forced.length?`<span class="forced">Entangled: ${r.forced.join('; ')}.</span>`:''); }
+  document.getElementById('undo').disabled=game.first===null && game.selectedPair===null && !game.undoStack.length;
+  document.getElementById('hint').textContent=game.phase==='measure'?'Select your own spooky mark, then roll. Shared squares select only your pairs.'
+    :game.phase==='over'?'New game starts again. Undo reverses the last action.'
+    :game.mode==='classical'?'Classical marks need a completely empty square.'
+    :'Click numbers or press 1–9. A square may hold two spooky marks.';
+  document.getElementById('event').textContent=game.event;
+}
+document.getElementById('classical').addEventListener('click',()=>{game.setMode('classical');render();});
+document.getElementById('quantum').addEventListener('click',()=>{game.setMode('quantum');render();});
+document.getElementById('roll').addEventListener('click',()=>{game.measure(Math.floor(Math.random()*6)+1);render();});
+document.getElementById('undo').addEventListener('click',()=>{game.undo();render();});
+document.getElementById('new-game').addEventListener('click',()=>{game.reset();render();});
+document.getElementById('fullscreen').addEventListener('click',async()=>{
+  try {if(document.fullscreenElement)await document.exitFullscreen();else await document.documentElement.requestFullscreen();}
+  catch(_){document.getElementById('event').textContent='Use your browser’s View menu to enter full screen.';}
+});
+document.addEventListener('fullscreenchange',()=>{document.getElementById('fullscreen').textContent=document.fullscreenElement?'Exit full screen':'Full screen';});
+document.addEventListener('keydown',event=>{
+  if(event.ctrlKey||event.metaKey||event.altKey||event.repeat)return;
+  if(/^[1-9]$/.test(event.key)){event.preventDefault();game.choose(Number(event.key));render();}
+  if(event.key==='Escape'){game.cancel();render();}
+});
+render();
+
+</script>
+</body>
+</html>

@@ -1,0 +1,502 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; connect-src 'none'; img-src data:; base-uri 'none'; form-action 'none'">
+<title>Ghost Grid — Goff's Quantum Tic-Tac-Toe</title>
+<style>
+:root { color-scheme: light; font-family: Arial, Helvetica, sans-serif; color: #202435; background: #fff; }
+* { box-sizing: border-box; }
+body { margin: 0; }
+.app { max-width: 1440px; min-width: 650px; margin: auto; padding: 18px 28px; }
+header { display: flex; justify-content: space-between; align-items: center; gap: 20px; }
+h1 { margin: 0; color: #b41524; font-size: clamp(26px, 3vw, 40px); }
+.subtitle { margin: 5px 0 0; font-size: 18px; }
+.badge { border: 1px solid #bec8be; border-radius: 20px; padding: 8px 14px; font-size: 15px; white-space: nowrap; }
+.turn-badge { font-weight: bold; font-size: clamp(18px, 1.9vw, 24px); border-width: 3px; border-style: solid; padding: 10px 18px; }
+.turn-badge.x { color: #b41524; border-color: #b41524; background: #fdeff0; }
+.turn-badge.o { color: #154c9c; border-color: #154c9c; background: #eef3fb; }
+.turn-badge.done { color: #202435; border-color: #bec8be; background: #f0f3f8; }
+#status { font-size: clamp(21px, 2.3vw, 30px); font-weight: bold; margin: 18px 0; padding: 14px 18px; background: #f0f3f8; border-left: 6px solid #b41524; border-radius: 6px; }
+.play-area { display: grid; grid-template-columns: minmax(0, 1fr) minmax(260px, .68fr); gap: clamp(24px, 5vw, 72px); align-items: center; }
+.board-wrap { width: min(100%, 62vh, 670px); justify-self: center; }
+#board { display: grid; grid-template-columns: repeat(3, 1fr); grid-template-rows: repeat(3, 1fr); aspect-ratio: 1; gap: 5px; background: #ba1828; border: 5px solid #ba1828; border-radius: 8px; overflow: hidden; }
+.square { position: relative; display: flex; align-items: center; justify-content: center; background: white; min-width: 0; min-height: 0; padding: 30px 5px 8px; }
+.square.selected { background: #fff0c9; box-shadow: inset 0 0 0 4px #8c6000; }
+.square.winning { background: #e0f3e3; }
+.square.full { background: #f7f4ee; }
+.number { position: absolute; top: 6px; left: 9px; font-size: clamp(16px, 1.8vw, 24px); font-weight: bold; color: #626575; }
+.mark { font-size: clamp(52px, 9vh, 110px); font-weight: bold; }
+.x { color: #b41524; }
+.o { color: #154c9c; }
+.ghosts { display: flex; gap: 5px; align-items: center; justify-content: center; width: 100%; }
+.ghost { border: 3px dashed currentColor; border-radius: 10px; padding: 5px 10px; text-align: center; font-weight: bold; line-height: 1; }
+.ghosts.one .ghost { font-size: clamp(34px, 6vh, 65px); padding: 5px 12px; }
+.ghosts.two .ghost { font-size: clamp(19px, 3.3vh, 34px); padding: 4px 6px; }
+.ghost small { display: block; margin-top: 5px; font-size: .44em; font-weight: bold; }
+.ghost.selected { background: #fff0c9; box-shadow: 0 0 0 3px #8c6000; }
+.earth { position: absolute; top: 9px; right: 8px; font-size: 14px; font-weight: bold; color: #6b4700; }
+.legend { display: flex; justify-content: center; gap: 22px; margin-top: 12px; font-size: 17px; }
+.legend span:first-child { border-bottom: 2px dashed #626575; }
+h2 { font-size: 26px; margin: 0 0 8px; }
+#move { font-size: 20px; margin: 0 0 14px; font-weight: bold; }
+#pad { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+button { font: inherit; cursor: pointer; border: 2px solid #b9bdc8; border-radius: 9px; background: #f4f5f8; color: #202435; font-weight: bold; }
+button:hover:enabled { background: #e6eaf3; border-color: #50586c; }
+button:focus-visible { outline: 4px solid #985800; outline-offset: 3px; }
+.pad-button { height: clamp(52px, 8vh, 82px); font-size: clamp(26px, 2.6vw, 34px); line-height: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 2px; }
+.pad-button.selected { background: #fff0c9; border-color: #8c6000; }
+button:disabled { cursor: default; opacity: .42; }
+.actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 16px; }
+.actions button { padding: 11px 15px; font-size: 17px; }
+#new-game { background: #b41524; border-color: #b41524; color: white; }
+#new-game:hover { background: #95111e; }
+.hint { color: #535969; font-size: 16px; line-height: 1.45; margin: 12px 0 0; }
+#event { min-height: 24px; font-size: 18px; line-height: 1.4; margin: 18px 0 0; }
+body[data-phase="measure"] .pad-button { height: clamp(44px, 7vh, 76px); font-size: 25px; }
+body[data-phase="measure"] #hint, body[data-phase="measure"] #event { display: none; }
+#mode-controls { display: flex; gap: 8px; margin-bottom: 12px; }
+#mode-controls button { flex: 1; padding: 9px 4px; font-size: 17px; }
+#mode-controls button[aria-pressed="true"] { background: #154c9c; border-color: #154c9c; color: white; }
+#measurement { margin: 12px 0; padding: 12px; border: 2px solid #154c9c; border-radius: 8px; }
+#pair-choice { margin: 0 0 8px; font-size: 19px; font-weight: bold; }
+#roll { width: 100%; padding: 10px; background: #154c9c; border-color: #154c9c; color: white; font-size: 21px; }
+#die-rule { margin: 8px 0 0; font-size: 16px; }
+#die-result { margin: 12px 0 0; font-size: 19px; font-weight: bold; line-height: 1.4; background: #f0f3f8; padding: 8px 12px; border-radius: 6px; }
+#die-result .forced { display: block; margin-top: 6px; font-size: 17px; color: #6b4700; }
+#next-step { width: 100%; padding: 10px; background: #8c6000; border-color: #8c6000; color: white; font-size: 21px; }
+#next-step:hover:enabled { background: #6b4700; border-color: #6b4700; }
+#chain-rule { margin: 8px 0 0; font-size: 16px; }
+.square.conflict { background: #fde7d3; box-shadow: inset 0 0 0 5px #b3530f; gap: 10px; }
+.square.conflict .mark { font-size: clamp(40px, 6.5vh, 80px); }
+.square.destination { background: #e6f4ea; box-shadow: inset 0 0 0 5px #2e7d32; }
+.pushed { border: 3px dashed currentColor; border-radius: 10px; padding: 5px 8px; background: #fff; text-align: center; font-weight: bold; line-height: 1; font-size: clamp(22px, 3.6vh, 38px); animation: nudge 1.2s ease-in-out infinite; }
+.pushed small { display: block; margin-top: 4px; font-size: .45em; }
+.pushed em { display: block; margin-top: 4px; font-style: normal; font-size: .45em; color: #b3530f; }
+.ghost.arriving { background: #fff; box-shadow: 0 0 0 4px #2e7d32; }
+@keyframes nudge { 50% { transform: translateY(-4px); } }
+@media (prefers-reduced-motion: reduce) { .pushed { animation: none; } }
+body[data-phase="chain"] .pad-button { height: clamp(44px, 7vh, 76px); font-size: 25px; }
+body[data-phase="chain"] #hint, body[data-phase="chain"] #event { display: none; }
+.pad-button small { display: block; font-size: 12px; margin-top: 2px; font-weight: bold; }
+[hidden] { display: none !important; }
+details { margin-top: 18px; border-top: 1px solid #d5d8de; padding-top: 12px; font-size: 17px; line-height: 1.5; }
+summary { cursor: pointer; font-weight: bold; }
+details p { max-width: 1000px; }
+@media (max-height: 720px) { .app { padding-top: 12px; } #status { margin: 12px 0; padding: 10px 14px; } #event { margin-top: 10px; } details { margin-top: 10px; } }
+
+.ghosts.many {display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:3px}
+.ghosts.many .ghost {font-size:clamp(14px,2vh,22px);padding:2px 1px;border-width:2px;border-radius:5px}
+.ghosts.many small {margin-top:2px}
+.square.cycle {background:#fff6d9}
+.ghost.cycle-mark {text-decoration:underline;text-underline-offset:3px}
+.square.conflict {background:#fde7d3;flex-wrap:wrap;gap:3px}
+.square:has(.mark):has(.ghosts) .mark {position:absolute;top:3px;right:8px;font-size:23px}
+.square.conflict .ghosts {width:100%}
+.square.conflict .ghost {font-size:clamp(14px,2vh,22px);padding:2px;border-width:2px}
+.square.destination {background:#e6f4ea}
+.mark sub {font-size:.25em}
+.choice-label {position:absolute;top:8px;right:8px;font-size:13px;color:#6b4700;font-weight:bold}
+.legend {font-size:14px;gap:12px;flex-wrap:wrap}
+.pad-button small {max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:11px}
+.pad-button.collapse-option {background:#fff0c9;border-color:#8c6000}
+.pad-button.conflict {background:#fde7d3;border-color:#b3530f}
+.pad-button.destination {background:#e6f4ea;border-color:#2e7d32}
+#cycle-panel {margin:10px 0;padding:10px;border:2px solid #154c9c;border-radius:8px}
+#cycle-explanation {margin:0 0 8px;font-size:17px;font-weight:bold}
+#cycle-options {display:flex;gap:8px}
+#cycle-options button {flex:1;padding:9px 5px;background:#fff0c9;border-color:#8c6000}
+#collapse-result {margin:8px 0;padding:8px 12px;background:#f0f3f8;border-radius:6px;font-size:16px;max-height:100px;overflow:auto}
+#collapse-result .forced {display:block;margin-top:4px;color:#6b4700}
+#score {font-size:20px;font-weight:bold}
+body[data-phase="collapse"] .pad-button {height:clamp(44px,7vh,76px)}
+body[data-phase="collapse"] #event {display:none}
+@media(max-height:800px){.actions{margin-top:8px}.actions button{padding:8px 10px}.hint{margin-top:7px}#event{margin-top:7px}#move{margin-bottom:8px}#status{font-size:24px}.subtitle{font-size:16px}}
+</style>
+</head>
+<body>
+<main class="app">
+  <header>
+    <div><h1>GHOST GRID</h1><p class="subtitle">Full Goff game · Superposition + entanglement · Step-by-step collapse</p></div>
+    <span class="badge turn-badge" id="turn-badge"></span>
+  </header>
+  <div id="status" role="status" aria-live="polite"></div>
+  <div class="play-area">
+    <section class="board-wrap" aria-label="Quantum tic-tac-toe board">
+      <div id="board" role="group" aria-label="Squares 1 to 9, left to right, top to bottom"></div>
+      <div class="legend"><span class="spooky">Dashed = spooky mark</span><span>Large = real mark</span><span><u>Underlined</u> = collapsing group</span></div>
+    </section>
+    <section aria-label="Playing pad">
+      <h2>Playing pad</h2>
+      <p id="move"></p>
+      <div id="pad"></div>
+      <section id="cycle-panel" hidden aria-label="Choose collapse">
+        <p id="cycle-explanation"></p>
+        <div id="cycle-options"></div><button id="next-step" hidden>Next step</button><p id="chain-rule" hidden>Click Next step, press Enter, or click a highlighted square.</p>
+      </section>
+      <p id="collapse-result" hidden aria-live="polite"></p>
+      <p id="score" hidden aria-live="polite"></p>
+      <div class="actions">
+        <button id="undo">Undo</button>
+        <button id="new-game">New game</button>
+        <button id="fullscreen">Full screen</button>
+      </div>
+      <p class="hint" id="hint"></p>
+      <p id="event" aria-live="polite"></p>
+    </section>
+  </div>
+  <details>
+    <summary>How to play and score</summary>
+    <p><strong>Place:</strong> every move is one pair of spooky marks. X takes odd-numbered moves and O takes even-numbered moves. Put the pair in two different squares that do not contain real marks. Spooky marks from any number of earlier moves may share a square. If only one nonclassical square remains on move nine, both marks go there.</p>
+    <p><strong>Entangle:</strong> pairs sharing a square become entangled. If a new pair closes a loop, the entire connected group—including any stems—must collapse. Its marks are underlined while a collapse choice is pending.</p>
+    <p><strong>Collapse:</strong> the player who <em>did not</em> close the loop chooses which square receives the loop-closing pair. That choice forces every linked pair into one square. The kept halves become real marks; the rejected halves disappear. Real squares are locked. Choosing the collapse does not use the chooser’s regular move.</p>
+    <p><strong>Win:</strong> only real marks count. Three real marks in a row wins after a collapse. If one collapse produces several rows, a row’s completion number is its largest move number. Each row with the smallest completion number scores 1 point and later rows score ½ point; the higher total wins. Equal totals are a draw. If move nine produces no real three-in-a-row, the game is a cat’s game (tie).</p>
+    <p><strong>Controls:</strong> use the right-side pad or keys 1–9. Escape cancels the first square. During a cycle, choose either destination offered for the newest pair. Each pair has a color, move number, and halves A and B. After choosing a collapse, click Next step, either highlighted square, or press Enter, Right Arrow, or Page Down to resolve each forced mark. Orange shows the departing mark; green shows its destination. Wins are checked only when the whole group is resolved. Undo cancels a selection or reverses one placement, collapse choice, or chain step. New game resets everything. Full screen is best for projection.</p>
+    <p>Rules follow Allan Goff, “Quantum tic-tac-toe: A teaching metaphor for superposition in quantum mechanics,” <em>American Journal of Physics</em> 74 (2006), pp. 962–973. The score calculation uses the classical move-order method described for simultaneous three-in-a-rows.</p>
+  </details>
+</main>
+<script>
+'use strict';
+const LINES = [[1,2,3],[4,5,6],[7,8,9],[1,4,7],[2,5,8],[3,6,9],[1,5,9],[3,5,7]];
+
+class QuantumGame {
+  constructor() { this.reset(); }
+
+  reset() {
+    this.solid = Array(10).fill(null);
+    this.pairs = [];
+    this.turn = 'X';
+    this.move = 1;
+    this.first = null;
+    this.phase = 'play';
+    this.cycle = null;
+    this.chain = null; this.collapseLog = null;
+    this.result = null;
+    this.scores = {X:0, O:0};
+    this.lines = {X:[], O:[]};
+    this.event = '';
+    this.undoStack = [];
+  }
+
+  openSquares() {
+    return Array.from({length:9}, (_,i)=>i+1).filter(square=>!this.solid[square]);
+  }
+
+  marksAt(square) {
+    return this.pairs.filter(pair=>pair.squares.includes(square));
+  }
+
+  snapshot() {
+    const {undoStack, ...state} = this;
+    return JSON.stringify({...state, first:null});
+  }
+
+  undo() {
+    if (this.first !== null) { this.first = null; return; }
+    if (this.undoStack.length) Object.assign(this, JSON.parse(this.undoStack.pop()));
+  }
+
+  cancel() {
+    if (this.phase === 'play') this.first = null;
+  }
+
+  nextPlayer() {
+    this.turn = this.turn === 'X' ? 'O' : 'X';
+  }
+
+  component(start, excludedId=null) {
+    const seenSquares = new Set([start]);
+    const seenPairs = new Set();
+    const queue = [start];
+    while (queue.length) {
+      const square = queue.shift();
+      for (const pair of this.pairs) {
+        if (pair.id === excludedId || seenPairs.has(pair.id) || !pair.squares.includes(square)) continue;
+        seenPairs.add(pair.id);
+        for (const endpoint of pair.squares) {
+          if (!seenSquares.has(endpoint)) { seenSquares.add(endpoint); queue.push(endpoint); }
+        }
+      }
+    }
+    return {squares:[...seenSquares], pairIds:[...seenPairs]};
+  }
+
+  wouldCloseCycle(a, b) {
+    if (a === b) return true;
+    return this.component(a).squares.includes(b);
+  }
+
+  winningLines(player) {
+    return LINES.filter(line=>line.every(square=>this.solid[square]?.player === player));
+  }
+
+  scoreWins() {
+    const rows = [];
+    for (const player of ['X','O']) {
+      this.lines[player] = this.winningLines(player);
+      for (const line of this.lines[player]) {
+        const completed = Math.max(...line.map(square=>this.solid[square].id));
+        rows.push({player,line,completed});
+      }
+    }
+    this.scores = {X:0,O:0};
+    if (!rows.length) return false;
+    const earliest = Math.min(...rows.map(row=>row.completed));
+    for (const row of rows) this.scores[row.player] += row.completed === earliest ? 1 : 0.5;
+    if (this.scores.X === this.scores.O) this.result = 'DRAW';
+    else this.result = this.scores.X > this.scores.O ? 'X' : 'O';
+    this.phase = 'over';
+    return true;
+  }
+
+  choose(square) {
+    if (!Number.isInteger(square) || square < 1 || square > 9 || this.phase !== 'play' || this.solid[square]) return;
+    const available = this.openSquares();
+    if (available.length === 1) {
+      if (square !== available[0]) return;
+      this.undoStack.push(this.snapshot());
+      const pair = {player:this.turn,id:this.move,squares:[square,square]};
+      this.pairs.push(pair);
+      this.cycle = {closer:this.turn, chooser:this.turn === 'X' ? 'O' : 'X', pairId:this.move,
+        pairIds:[this.move], squares:[square], options:[square]};
+      this.phase = 'collapse';
+      this.first = null;
+      this.event = `${this.turn}${this.move} must occupy the last open square.`;
+      return;
+    }
+    if (this.first === null) { this.first = square; return; }
+    if (square === this.first) return;
+    this.undoStack.push(this.snapshot());
+    const a = this.first;
+    const closesCycle = this.wouldCloseCycle(a, square);
+    const pair = {player:this.turn,id:this.move,squares:[a,square]};
+    this.pairs.push(pair);
+    this.first = null;
+    if (closesCycle) {
+      const group = this.component(a);
+      this.cycle = {closer:this.turn, chooser:this.turn === 'X' ? 'O' : 'X', pairId:this.move,
+        pairIds:group.pairIds, squares:group.squares, options:[a,square]};
+      this.phase = 'collapse';
+      this.event = `${this.turn}${this.move} closed a loop. ${this.cycle.chooser} chooses the collapse.`;
+      return;
+    }
+    this.event = `${this.turn}${this.move} placed in squares ${a} and ${square}.`;
+    this.move++;
+    this.nextPlayer();
+    if (this.move > 9) {
+      this.phase = 'over';
+      this.result = 'DRAW';
+      this.event = 'Nine moves without a classical three-in-a-row: cat’s game.';
+    }
+  }
+
+  chooseCollapse(square) {
+    if (this.phase !== 'collapse' || !this.cycle || !this.cycle.options.includes(square)) return;
+    const cycle = this.cycle;
+    const chosen = this.pairs.find(pair=>pair.id === cycle.pairId);
+    if (!chosen) return;
+    const steps = [];
+    const assignments = new Map([[chosen.id,square]]);
+    const occupied = new Map([[square,chosen.id]]);
+    const queue = [square];
+    while (queue.length) {
+      const filledSquare = queue.shift();
+      for (const pair of this.pairs) {
+        if (!cycle.pairIds.includes(pair.id) || assignments.has(pair.id) || !pair.squares.includes(filledSquare)) continue;
+        const target = pair.squares[0] === filledSquare ? pair.squares[1] : pair.squares[0];
+        if (occupied.has(target)) throw new Error('Invalid collapse: two moves occupy one square');
+        steps.push({id:pair.id,from:filledSquare,to:target});
+        assignments.set(pair.id,target);
+        occupied.set(target,pair.id);
+        queue.push(target);
+      }
+    }
+    if (assignments.size !== cycle.pairIds.length) throw new Error('Incomplete collapse');
+    this.undoStack.push(this.snapshot());
+    this.solid[square] = {player:chosen.player,id:chosen.id};
+    this.pairs = this.pairs.filter(pair=>pair.id !== chosen.id);
+    this.collapseLog = {root:`${cycle.chooser} chose ${chosen.player}${chosen.id} → square ${square}.`,forced:[]};
+    this.chain = {steps,next:0};
+    if (steps.length) { this.phase = 'chain'; return; }
+    this.finishCollapse();
+  }
+
+  pendingStep() { return this.phase === 'chain' ? this.chain.steps[this.chain.next] : null; }
+
+  advanceChain() {
+    const step = this.pendingStep();
+    if (!step) return;
+    const pair = this.pairs.find(p=>p.id === step.id);
+    this.undoStack.push(this.snapshot());
+    this.solid[step.to] = {player:pair.player,id:pair.id};
+    this.pairs = this.pairs.filter(p=>p.id !== pair.id);
+    this.collapseLog.forced.push(`${pair.player}${pair.id}: square ${step.from} → ${step.to}; now real.`);
+    this.chain.next++;
+    if (this.chain.next === this.chain.steps.length) this.finishCollapse();
+  }
+
+  finishCollapse() {
+    this.event = `${this.cycle.pairIds.length} linked moves are now real. ${this.cycle.chooser} takes the next regular move.`;
+    this.cycle = null; this.chain = null;
+    this.phase = 'play';
+    this.move++;
+    this.nextPlayer();
+    if (this.scoreWins()) return;
+    if (this.move > 9) {
+      this.phase = 'over';
+      this.result = 'DRAW';
+      this.event += ' Nine moves without a winning row: cat’s game.';
+    }
+  }
+}
+
+const PALETTE = ['#975000','#086d75','#673bb7','#aa2858','#316226','#185aa5','#6d5600','#8e3d16','#5a4380'];
+const game = new QuantumGame();
+const board = document.getElementById('board');
+const pad = document.getElementById('pad');
+for (let square=1; square<=9; square++) {
+  const cell = document.createElement('div');
+  cell.className = 'square';
+  cell.addEventListener('click',()=>handleSquare(square));
+  board.appendChild(cell);
+  const button = document.createElement('button');
+  button.className = 'pad-button';
+  button.addEventListener('click',()=>handleSquare(square));
+  pad.appendChild(button);
+}
+
+function handleSquare(square) {
+  if (game.phase === 'chain') { const step=game.pendingStep(); if ([step.from,step.to].includes(square)) game.advanceChain(); }
+  else if (game.phase === 'collapse') game.chooseCollapse(square);
+  else game.choose(square);
+  render();
+  if (game.phase === 'chain') document.getElementById('next-step').focus({preventScroll:true});
+}
+
+function formatMarks(marks) {
+  return marks.map(mark=>`${mark.player}${mark.id}`).join(' ');
+}
+
+function render() {
+  document.body.dataset.phase = game.phase;
+  const step = game.pendingStep();
+  const actor = game.cycle?.chooser || game.turn;
+  const badge = document.getElementById('turn-badge');
+  badge.className = 'badge turn-badge ' + (game.phase === 'over' ? 'done' : actor.toLowerCase());
+  badge.textContent = game.phase === 'over' ? 'Game finished' : `${actor}’s turn · ${game.phase === 'chain' ? 'resolving chain' : game.phase === 'collapse' ? 'choosing collapse' : 'placing'}`;
+  const winning = [...game.lines.X,...game.lines.O].flat();
+  const cycleIds = new Set(game.cycle?.pairIds || []);
+  const cycleSquares = new Set(game.cycle?.squares || []);
+  for (let square=1; square<=9; square++) {
+    const cell = board.children[square-1];
+    const button = pad.children[square-1];
+    const solid = game.solid[square];
+    const marks = game.marksAt(square);
+    const selected = game.first === square;
+    const collapseOption = Boolean(game.phase === 'collapse' && game.cycle?.options.includes(square));
+    cell.className = 'square' + (selected || collapseOption ? ' selected' : '') +
+      (cycleSquares.has(square) ? ' cycle' : '') + (winning.includes(square) ? ' winning' : '');
+    cell.innerHTML = `<span class="number">${square}</span>`;
+    if (solid) cell.innerHTML += `<span class="mark ${solid.player.toLowerCase()}">${solid.player}<sub>${solid.id}</sub></span>`;
+    if (marks.length) cell.innerHTML += `<div class="ghosts ${marks.length === 1 ? 'one' : marks.length === 2 ? 'two' : 'many'}">` + marks.map(mark=> {
+      const leaving = step?.id === mark.id && step.from === square;
+      const arriving = step?.id === mark.id && step.to === square;
+      return `<span style="color:${PALETTE[(mark.id-1)%PALETTE.length]}" class="ghost${cycleIds.has(mark.id)?' cycle-mark':''}${leaving?' pushed':''}${arriving?' arriving':''}">${mark.player}<small>${mark.id} · ${mark.squares[0] === square ? 'A' : 'B'}</small>${leaving?`<em>→ ${step.to}</em>`:''}</span>`;
+    }).join('') + '</div>';
+    if (step?.from === square) cell.classList.add('conflict');
+    if (step?.to === square) cell.classList.add('destination');
+    if (selected) cell.innerHTML += '<span class="choice-label">first</span>';
+    else if (collapseOption) cell.innerHTML += '<span class="choice-label">choose</span>';
+    const description = [solid ? `real ${solid.player}, move ${solid.id}` : '', marks.length ? `spooky ${formatMarks(marks)}` : ''].filter(Boolean).join('; ') || 'open';
+    cell.setAttribute('aria-label',`Square ${square}, ${description}`);
+    button.innerHTML = `${square}<small>${solid ? `real ${solid.player}` : marks.length ? formatMarks(marks) : 'open'}</small>`;
+    button.className = 'pad-button' + (selected ? ' selected' : '') + (collapseOption ? ' collapse-option' : '');
+    button.disabled = game.phase === 'over' || (game.phase === 'chain' ? ![step.from,step.to].includes(square) : game.phase === 'collapse' ? !collapseOption : Boolean(solid || selected));
+    if (step?.from === square) { button.classList.add('conflict'); button.querySelector('small').textContent = `Move ${step.id} → ${step.to}`; }
+    if (step?.to === square) button.classList.add('destination');
+    button.setAttribute('aria-pressed',String(selected || collapseOption));
+    button.setAttribute('aria-label',`Square ${square}, ${description}`);
+  }
+
+  let status;
+  if (game.phase === 'chain') {
+    const pair=game.pairs.find(p=>p.id===step.id);
+    status = `Chain step ${game.chain.next+1} of ${game.chain.steps.length}: ${pair.player}${pair.id} must leave square ${step.from} → ${step.to}.`;
+  } else if (game.phase === 'collapse') {
+    const pair = game.pairs.find(item=>item.id === game.cycle.pairId);
+    status = game.cycle.options.length === 1
+      ? `${game.cycle.chooser}: confirm ${pair.player}${pair.id} in the last open square.`
+      : `${game.cycle.chooser}: choose where ${pair.player}${pair.id} becomes real.`;
+  } else if (game.phase === 'over' && game.result === 'DRAW') {
+    status = game.scores.X || game.scores.O ? 'Draw — the winning-row scores are equal.' : 'Cat’s game — no classical three-in-a-row.';
+  } else if (game.phase === 'over') {
+    status = `Player ${game.result} wins!`;
+  } else if (game.first !== null) {
+    status = `Player ${game.turn}: first square is ${game.first}. Choose a different nonclassical square.`;
+  } else {
+    status = `Player ${game.turn}: choose the first square for ${game.turn}${game.move}.`;
+  }
+  document.getElementById('status').textContent = status;
+  document.getElementById('move').textContent = game.phase === 'over' ? 'Game finished' : game.phase === 'collapse' ? `Move ${game.move} · Collapse` : `Move ${game.move} of 9 · Player ${game.turn}`;
+
+  const panel = document.getElementById('cycle-panel');
+  panel.hidden = !['collapse','chain'].includes(game.phase);
+  document.getElementById('next-step').hidden = game.phase !== 'chain';
+  document.getElementById('chain-rule').hidden = game.phase !== 'chain';
+  if (step) { document.getElementById('cycle-explanation').textContent = 'This linked mark must move to its other square.'; document.getElementById('move').textContent = `${actor}’s turn · Chain step ${game.chain.next+1} of ${game.chain.steps.length}`; }
+  const options = document.getElementById('cycle-options');
+  options.innerHTML = '';
+  if (game.phase === 'collapse') {
+    const pair = game.pairs.find(item=>item.id === game.cycle.pairId);
+    document.getElementById('cycle-explanation').textContent = game.cycle.options.length === 1
+      ? `Only square ${game.cycle.options[0]} remains nonclassical.`
+      : `${pair.player}${pair.id} closed a cycle involving ${game.cycle.pairIds.length} moves. The other player chooses its surviving square.`;
+    for (const square of game.cycle.options) {
+      const button = document.createElement('button');
+      button.textContent = `${pair.player}${pair.id} → square ${square}`;
+      button.addEventListener('click',()=>handleSquare(square));
+      options.appendChild(button);
+    }
+  }
+
+  const log=document.getElementById('collapse-result');
+  log.hidden = !game.collapseLog;
+  log.innerHTML = game.collapseLog ? game.collapseLog.root + game.collapseLog.forced.map(text=>`<span class="forced">${text}</span>`).join('') : '';
+  log.scrollTop=log.scrollHeight;
+  const score = document.getElementById('score');
+  score.hidden = game.phase !== 'over' || !(game.scores.X || game.scores.O);
+  score.textContent = `Winning-row score: X ${game.scores.X} · O ${game.scores.O}`;
+  document.getElementById('undo').disabled = game.first === null && !game.undoStack.length;
+  document.getElementById('hint').textContent = game.phase === 'collapse'
+    ? 'The chooser still receives the next regular move after collapse.'
+    : game.phase === 'over' ? 'Undo reverses the last move; New game starts again.'
+    : 'Spooky marks may overlap. Only large real marks lock a square.';
+  document.getElementById('event').textContent = game.event;
+}
+
+document.getElementById('next-step').addEventListener('click',()=>{game.advanceChain();render();});
+document.getElementById('undo').addEventListener('click',()=>{game.undo();render();});
+document.getElementById('new-game').addEventListener('click',()=>{game.reset();render();});
+document.getElementById('fullscreen').addEventListener('click',async()=>{
+  try {
+    if (document.fullscreenElement) await document.exitFullscreen();
+    else await document.documentElement.requestFullscreen();
+  } catch (_) {
+    document.getElementById('event').textContent = 'Use your browser’s View menu to enter full screen.';
+  }
+});
+document.addEventListener('fullscreenchange',()=>{
+  document.getElementById('fullscreen').textContent = document.fullscreenElement ? 'Exit full screen' : 'Full screen';
+});
+document.addEventListener('keydown',event=>{
+  if (event.ctrlKey || event.metaKey || event.altKey || event.repeat) return;
+  const stepKey = ['ArrowRight','PageDown'].includes(event.key) || (event.key === 'Enter' && !(event.target instanceof HTMLButtonElement));
+  if (game.phase === 'chain' && stepKey) { event.preventDefault(); game.advanceChain(); render(); }
+  if (/^[1-9]$/.test(event.key)) { event.preventDefault(); handleSquare(Number(event.key)); }
+  if (event.key === 'Escape') { game.cancel(); render(); }
+});
+render();
+</script>
+</body>
+</html>

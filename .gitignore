@@ -1,0 +1,11 @@
+# Older, superseded drafts. Not part of the published project.
+/Older Versions/
+
+# Allan Goff's original article is behind an AAPT/AIP paywall and is not
+# redistributed here. See the README for the citation and DOI.
+/QuantumTicTacToe.pdf
+
+# macOS / editor cruft
+.DS_Store
+~$*
+.~lock.*
