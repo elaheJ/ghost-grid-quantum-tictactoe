@@ -1,4 +1,4 @@
-# Ghost Grid: Quantum Tic-Tac-Toe
+# <img src="GhostGrid-icon.png" alt="" width="40" height="40"> Ghost Grid: Quantum Tic-Tac-Toe
 
 **Rules adapted from Allan Goff's quantum tic-tac-toe.** Allan Goff, "Quantum
 tic-tac-toe: A teaching metaphor for superposition in quantum mechanics,"
@@ -9,6 +9,10 @@ behind an AAPT/AIP paywall, so it is not included in this repository.
 **Developed for QCaMP.** These materials were built for QCaMP classroom use:
 browser-playable games, slides, and printable handouts for teaching
 superposition and entanglement through tic-tac-toe.
+
+<p align="center">
+  <img src="GhostGrid.png" alt="Ghost Grid: Quantum Tic-Tac-Toe logo. A smiling ghost floats across a red tic-tac-toe board." width="360">
+</p>
 
 ## What is here
 
@@ -23,6 +27,7 @@ superposition and entanglement through tic-tac-toe.
 | `Quantum_TicTacToe_Superposition_Only_Grade6_Handout.docx` | Printable handout for the superposition-only game. **Known issue:** its rule text does not yet match `Superposition_Only_TicTacToe_Offline.html` (it describes opposing-player choice with no dice, and no shared squares, instead of the die-roll measurement the game actually uses). Needs a rewrite before classroom use. |
 | `Quantum Tic Tac Toe_ Two versions.pdf` | QCaMP's own two-page reference sheet describing a superposition-only version and an entanglement version, used while developing the games above. |
 | `GhostGrid.png` | The Ghost Grid logo, used by the handout and slide generators. |
+| `GhostGrid-icon.png` | The ghost icon alone: a 512 × 512 PNG with a transparent background. It matches the icon in each game's title and browser tab. |
 | `build-goff-full-handout.py` | Regenerates `Quantum_TicTacToe_Goff_Grade6_Handout.docx`. Requires `python-docx` and `Pillow`. |
 | `build-superposition-slides.py` | Regenerates `Superposition_Only_TicTacToe_Slides.pptx`. Requires `python-pptx`, `Pillow`, and `lxml`. |
 | `build-notebook.py` | Regenerates `Superposition_Only_TicTacToe.ipynb` from the offline HTML game. |
