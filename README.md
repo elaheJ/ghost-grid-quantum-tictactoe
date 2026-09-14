@@ -6,9 +6,9 @@ tic-tac-toe: A teaching metaphor for superposition in quantum mechanics,"
 [DOI: 10.1119/1.2213635](https://doi.org/10.1119/1.2213635). That article is
 behind an AAPT/AIP paywall, so it is not included in this repository.
 
-**Developed for QCaMP.** These materials were built for QCaMP classroom use:
-browser-playable games, slides, and printable handouts for teaching
-superposition and entanglement through tic-tac-toe.
+**Developed using QCaMP material.** These materials were adapted from QCaMP
+classroom activities and include browser-playable games, slides, and printable
+handouts for teaching superposition and entanglement through tic-tac-toe.
 
 <p align="center">
   <img src="GhostGrid.png" alt="Ghost Grid: Quantum Tic-Tac-Toe logo. A smiling ghost floats across a red tic-tac-toe board." width="360">
