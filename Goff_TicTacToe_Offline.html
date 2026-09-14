@@ -43,6 +43,8 @@ h1 { margin: 0; color: #b41524; font-size: clamp(26px, 3vw, 40px); }
 .legend span:first-child { border-bottom: 2px dashed #626575; }
 h2 { font-size: 26px; margin: 0 0 8px; }
 #move { font-size: 20px; margin: 0 0 14px; font-weight: bold; }
+.pad-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
+.pad-heading > div:first-child { min-width: 0; }
 #pad { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
 button { font: inherit; cursor: pointer; border: 2px solid #b9bdc8; border-radius: 9px; background: #f4f5f8; color: #202435; font-weight: bold; }
 button:hover:enabled { background: #e6eaf3; border-color: #50586c; }
@@ -109,8 +111,15 @@ details p { max-width: 1000px; }
 #cycle-explanation {margin:0 0 8px;font-size:17px;font-weight:bold}
 #cycle-options {display:flex;gap:8px}
 #cycle-options button {flex:1;padding:9px 5px;background:#fff0c9;border-color:#8c6000}
-#collapse-result {margin:8px 0;padding:8px 12px;background:#f0f3f8;border-radius:6px;font-size:16px;max-height:100px;overflow:auto}
-#collapse-result .forced {display:block;margin-top:4px;color:#6b4700}
+#collapse-result {width:clamp(150px,17vw,210px);max-height:230px;overflow:auto;flex:0 0 auto;display:grid;grid-template-columns:64px minmax(0,1fr);gap:8px 10px;align-items:center;margin:0 0 12px;padding:10px;background:#fff7da;border:3px solid #8c6000;border-radius:12px;box-shadow:0 4px 12px rgba(32,36,53,.16);animation:result-pop .22s ease-out}
+#collapse-result .collapse-face {display:grid;place-items:center;width:64px;aspect-ratio:1;border:3px solid #202435;border-radius:12px;background:white;color:#202435;font-size:48px;font-weight:800;line-height:1}
+#collapse-result .collapse-summary {display:flex;min-width:0;flex-direction:column;line-height:1.08}
+#collapse-result .collapse-summary small {color:#6b4700;font-size:11px;font-weight:800;letter-spacing:.08em}
+#collapse-result .collapse-summary strong {margin-top:4px;color:#202435;font-size:clamp(18px,1.65vw,24px)}
+#collapse-result .collapse-detail {grid-column:1/-1;font-size:14px;font-weight:bold;line-height:1.25}
+#collapse-result .forced {display:block;grid-column:1/-1;margin-top:-2px;padding-top:6px;border-top:1px solid #d7bd68;font-size:13px;font-weight:bold;line-height:1.25;color:#6b4700}
+@keyframes result-pop {from {opacity:0;transform:translateY(-5px) scale(.97)}}
+@media (prefers-reduced-motion:reduce){#collapse-result{animation:none}}
 #score {font-size:20px;font-weight:bold}
 body[data-phase="collapse"] .pad-button {height:clamp(44px,7vh,76px)}
 body[data-phase="collapse"] #event {display:none}
@@ -130,14 +139,15 @@ body[data-phase="collapse"] #event {display:none}
       <div class="legend"><span class="spooky">Dashed = spooky mark</span><span>Large = real mark</span><span><u>Underlined</u> = collapsing group</span></div>
     </section>
     <section aria-label="Playing pad">
-      <h2>Playing pad</h2>
-      <p id="move"></p>
+      <div class="pad-heading">
+        <div><h2>Playing pad</h2><p id="move"></p></div>
+        <div id="collapse-result" hidden aria-live="polite" aria-atomic="true"></div>
+      </div>
       <div id="pad"></div>
       <section id="cycle-panel" hidden aria-label="Choose collapse">
         <p id="cycle-explanation"></p>
         <div id="cycle-options"></div><button id="next-step" hidden>Next step</button><p id="chain-rule" hidden>Click Next step, press Enter, or click a highlighted square.</p>
       </section>
-      <p id="collapse-result" hidden aria-live="polite"></p>
       <p id="score" hidden aria-live="polite"></p>
       <div class="actions">
         <button id="undo">Undo</button>
@@ -318,7 +328,7 @@ class QuantumGame {
     this.undoStack.push(this.snapshot());
     this.solid[square] = {player:chosen.player,id:chosen.id};
     this.pairs = this.pairs.filter(pair=>pair.id !== chosen.id);
-    this.collapseLog = {root:`${cycle.chooser} chose ${chosen.player}${chosen.id} → square ${square}.`,forced:[]};
+    this.collapseLog = {root:`${cycle.chooser} chose ${chosen.player}${chosen.id} → square ${square}.`,square,forced:[]};
     this.chain = {steps,next:0};
     if (steps.length) { this.phase = 'chain'; return; }
     this.finishCollapse();
@@ -464,7 +474,9 @@ function render() {
 
   const log=document.getElementById('collapse-result');
   log.hidden = !game.collapseLog;
-  log.innerHTML = game.collapseLog ? game.collapseLog.root + game.collapseLog.forced.map(text=>`<span class="forced">${text}</span>`).join('') : '';
+  log.innerHTML = game.collapseLog
+    ? `<span class="collapse-face">${game.collapseLog.square}</span><span class="collapse-summary"><small>COLLAPSE</small><strong>SQUARE ${game.collapseLog.square}</strong></span><span class="collapse-detail">${game.collapseLog.root}</span>`
+      +game.collapseLog.forced.map(text=>`<span class="forced">${text}</span>`).join('') : '';
   log.scrollTop=log.scrollHeight;
   const score = document.getElementById('score');
   score.hidden = game.phase !== 'over' || !(game.scores.X || game.scores.O);

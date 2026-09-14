@@ -43,6 +43,8 @@ h1 { margin: 0; color: #b41524; font-size: clamp(26px, 3vw, 40px); }
 .legend span:first-child { border-bottom: 2px dashed #626575; }
 h2 { font-size: 26px; margin: 0 0 8px; }
 #move { font-size: 20px; margin: 0 0 14px; font-weight: bold; }
+.pad-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
+.pad-heading > div:first-child { min-width: 0; }
 #pad { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
 button { font: inherit; cursor: pointer; border: 2px solid #b9bdc8; border-radius: 9px; background: #f4f5f8; color: #202435; font-weight: bold; }
 button:hover:enabled { background: #e6eaf3; border-color: #50586c; }
@@ -65,8 +67,14 @@ body[data-phase="measure"] #hint, body[data-phase="measure"] #event { display: n
 #pair-choice { margin: 0 0 8px; font-size: 19px; font-weight: bold; }
 #roll { width: 100%; padding: 10px; background: #154c9c; border-color: #154c9c; color: white; font-size: 21px; }
 #die-rule { margin: 8px 0 0; font-size: 16px; }
-#die-result { margin: 12px 0 0; font-size: 19px; font-weight: bold; line-height: 1.4; background: #f0f3f8; padding: 8px 12px; border-radius: 6px; }
-#die-result .forced { display: block; margin-top: 6px; font-size: 17px; color: #6b4700; }
+#die-result { width: clamp(150px, 17vw, 210px); flex: 0 0 auto; display: grid; grid-template-columns: 64px minmax(0, 1fr); gap: 8px 10px; align-items: center; margin: 0 0 12px; padding: 10px; background: #fff7da; border: 3px solid #8c6000; border-radius: 12px; box-shadow: 0 4px 12px rgba(32,36,53,.16); animation: result-pop .22s ease-out; }
+#die-result .die-face { display: grid; place-items: center; width: 64px; aspect-ratio: 1; border: 3px solid #202435; border-radius: 12px; background: white; color: #202435; font-size: 48px; font-weight: 800; line-height: 1; }
+#die-result .die-summary { display: flex; min-width: 0; flex-direction: column; line-height: 1.08; }
+#die-result .die-summary small { color: #6b4700; font-size: 11px; font-weight: 800; letter-spacing: .08em; }
+#die-result .die-summary strong { margin-top: 4px; color: #202435; font-size: clamp(18px, 1.65vw, 24px); }
+#die-result .die-detail { grid-column: 1 / -1; font-size: 14px; font-weight: bold; line-height: 1.25; }
+#die-result .forced { display: block; grid-column: 1 / -1; margin-top: -2px; padding-top: 6px; border-top: 1px solid #d7bd68; font-size: 13px; font-weight: bold; line-height: 1.25; color: #6b4700; }
+@keyframes result-pop { from { opacity: 0; transform: translateY(-5px) scale(.97); } }
 #next-step { width: 100%; padding: 10px; background: #8c6000; border-color: #8c6000; color: white; font-size: 21px; }
 #next-step:hover:enabled { background: #6b4700; border-color: #6b4700; }
 #chain-rule { margin: 8px 0 0; font-size: 16px; }
@@ -78,7 +86,7 @@ body[data-phase="measure"] #hint, body[data-phase="measure"] #event { display: n
 .pushed em { display: block; margin-top: 4px; font-style: normal; font-size: .45em; color: #b3530f; }
 .ghost.arriving { background: #fff; box-shadow: 0 0 0 4px #2e7d32; }
 @keyframes nudge { 50% { transform: translateY(-4px); } }
-@media (prefers-reduced-motion: reduce) { .pushed { animation: none; } }
+@media (prefers-reduced-motion: reduce) { .pushed, #die-result { animation: none; } }
 body[data-phase="chain"] .pad-button { height: clamp(44px, 7vh, 76px); font-size: 25px; }
 body[data-phase="chain"] #hint, body[data-phase="chain"] #event { display: none; }
 .pad-button small { display: block; font-size: 12px; margin-top: 2px; font-weight: bold; }
@@ -99,15 +107,17 @@ details p { max-width: 1000px; }
       <div class="legend"><span>Dashed = spooky mark</span><span>Large = real mark</span></div>
     </section>
     <section aria-label="Playing pad">
-      <h2>Playing pad</h2><p id="move"></p>
+      <div class="pad-heading">
+        <div><h2>Playing pad</h2><p id="move"></p></div>
+        <div id="die-result" hidden aria-live="polite" aria-atomic="true"></div>
+      </div>
       <div id="mode-controls" role="group" aria-label="Choose move type"><button id="classical" aria-pressed="false">Classical · 1 square</button><button id="quantum" aria-pressed="true">Superposition · 2 squares</button></div>
       <div id="pad"></div>
       <section id="measurement" hidden aria-label="Measure a superposition pair">
-        <p id="pair-choice"></p><button id="roll" disabled>Roll die</button><button id="next-step" hidden>Next step</button>
+        <p id="pair-choice"></p><button id="roll" disabled>Roll dice</button><button id="next-step" hidden>Next step</button>
         <p id="die-rule">Odd (1, 3, 5) → A · Even (2, 4, 6) → B</p>
         <p id="chain-rule" hidden>Click Next step, press Enter, or click a highlighted square.</p>
       </section>
-      <p id="die-result" hidden aria-live="polite"></p>
       <div class="actions"><button id="undo">Undo</button><button id="new-game">New game</button><button id="fullscreen">Full screen</button></div>
       <p class="hint" id="hint"></p>
       <p id="event" aria-live="polite"></p>
@@ -380,7 +390,9 @@ function render() {
   document.getElementById('chain-rule').hidden=!chaining;
   const roll=document.getElementById('die-result');roll.hidden=!game.lastRoll;
   if (game.lastRoll) { const r=game.lastRoll;
-    roll.innerHTML=`Die: ${r.face} → ${r.player}${r.id}${r.label} stays in ${r.square}; square ${r.cleared} clears.`
+    const outcome=r.face%2===1?'ODD → A':'EVEN → B';
+    roll.innerHTML=`<span class="die-face">${r.face}</span><span class="die-summary"><small>DICE ROLL</small><strong>${outcome}</strong></span>`
+      +`<span class="die-detail">${r.player}${r.id}${r.label} stays in square ${r.square}. Square ${r.cleared} clears.</span>`
       +r.forced.map((line,i)=>`<span class="forced">Step ${i+1}: ${line}.</span>`).join(''); }
   document.getElementById('undo').disabled=game.first===null && game.selectedPair===null && !game.undoStack.length;
   document.getElementById('hint').textContent=game.phase==='chain'?'Each click resolves one step of the chain.'
